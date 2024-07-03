@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "ua-appointment-checker"
+version = "0.1.0"
+description = ""
+authors = ["Christofer Berruz Chungata <cberruzc@my.bridgeport.edu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.32.3"
+beautifulsoup4 = "^4.12.3"
+selenium = "^4.22.0"
+click = "^8.1.7"
+loguru = "^0.7.2"
+
+[tool.poetry.scripts]
+ua-appointment-checker = "ua_appointment_checker.main:main"
+
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.26.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
