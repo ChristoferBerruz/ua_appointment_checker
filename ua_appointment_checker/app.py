@@ -1,54 +1,54 @@
-from selenium import webdriver
-import click
-from bs4 import BeautifulSoup
-import time
 from dotenv import load_dotenv
-from ua_appointment_checker.email import send_email
+import os
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 
+import ua_appointment_checker.constants as cons
+from ua_appointment_checker import checker
+from typing import Tuple, Callable
 from loguru import logger
+from ua_appointment_checker.registry import manager
 
-embassy_url = "https://consulategeneralofukraineinsanfrancisco.setmore.com/beta/services/43f35be4-5432-4289-b1b0-3838ab21d825?step=time-slot&products=43f35be4-5432-4289-b1b0-3838ab21d825&type=service&staff=5P8eQv743liUR3eBhDkLo1fP4Vdbtmtq&staffSelected=false"
+
+@manager.register("start", description="")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    commands_available = "\n".join(
+        f"/{entry.endpoint}: {entry.description}"
+        for _, entry in manager.registry.items() if entry.endpoint != "start"
+    )
+    start_message = (
+        "Welcome! This bot allows you to receive updates whenever a new appointment "
+        "in Ukraine's Embassy in SF opens. Below is a list of useful commands.\n"
+        f"{commands_available}"
+    )
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=start_message)
 
 
-@click.command()
-@click.option("--load-page-wait-seconds", default=30, type=int, help="How many seconds to wait for the page to fully load")
-@click.option("--remote-chrome-driver-url", default="http://localhost:4444/wd/hub", type=str, help="The chrome url docker container to invoke the Selenium web driver.")
-@click.option("--embassy-url", type=str, default=embassy_url, help="The embassy appointment url to check")
-@click.option("--recipient-email", type=str, required=True)
-@click.option("--sender-email", type=str, required=True)
-def watch(
-        load_page_wait_seconds: int,
-        remote_chrome_driver_url: str,
-        embassy_url: str,
-        recipient_email: str,
-        sender_email: str):
-    logger.info(
-        f"Initializing webdrive using url: {remote_chrome_driver_url!r}")
-    driver = webdriver.Remote(remote_chrome_driver_url,
-                              options=webdriver.ChromeOptions())
-    target_string = "Немає вільних місць"
-    logger.info(
-        f"Making GET request using webdriver for url: {embassy_url!r}")
-    driver.get(embassy_url)
-    logger.info(
-        f"Sleeping for {load_page_wait_seconds} seconds to load page")
-    time.sleep(load_page_wait_seconds)
-    logger.info(f"Extracting and parsing html")
-    page_html = driver.page_source
-    bsoup = BeautifulSoup(page_html, "html.parser")
-    if target_string not in bsoup.text:
-        logger.info("Appointments available. Sending mail")
-        send_email(sender_email, recipient_email,
-                   message="Automation has detected appointments available. Book now!",
-                   subject="UA Appointment Checker")
+@manager.register(endpoint="check", description="Checks, right now, whether there are appointments available")
+async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    driver = checker.get_default_remote_webdriver(
+        cons.DEFAULT_REMOTE_CHROME_URL)
+    available = checker.are_appointments_available(
+        web_driver=driver,
+        target_url=cons.DEFAULT_EMBASSY_URL
+    )
+    if available:
+        message = f"Appointments available. Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
     else:
-        # print that no appointment available
-        logger.info("No appointments available.")
-    logger.info("Done.")
+        message = "No appointments available"
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=message)
 
 
 def main():
-    file_location = "~/ua_appointment_checker.log"
-    logger.add(file_location, rotation="1 week")
     load_dotenv()
-    watch()
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        raise ValueError(
+            "No bot token found. Please set the right env variable")
+    application = ApplicationBuilder().token(token).build()
+    for _, entry in manager.registry.items():
+        handler = CommandHandler(entry.endpoint, entry.func)
+        application.add_handler(handler)
+    application.run_polling()
