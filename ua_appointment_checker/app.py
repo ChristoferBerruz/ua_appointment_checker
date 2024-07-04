@@ -48,5 +48,7 @@ def watch(
 
 
 def main():
+    file_location = "~/ua_appointment_checker.log"
+    logger.add(file_location, rotation="1 week")
     load_dotenv()
     watch()
