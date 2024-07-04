@@ -2,6 +2,8 @@ from selenium import webdriver
 import click
 from bs4 import BeautifulSoup
 import time
+from dotenv import load_dotenv
+from ua_appointment_checker.email import send_email
 
 from loguru import logger
 
@@ -12,7 +14,14 @@ embassy_url = "https://consulategeneralofukraineinsanfrancisco.setmore.com/beta/
 @click.option("--load-page-wait-seconds", default=30, type=int, help="How many seconds to wait for the page to fully load")
 @click.option("--remote-chrome-driver-url", default="http://localhost:4444/wd/hub", type=str, help="The chrome url docker container to invoke the Selenium web driver.")
 @click.option("--embassy-url", type=str, default=embassy_url, help="The embassy appointment url to check")
-def watch(load_page_wait_seconds: int, remote_chrome_driver_url: str, embassy_url: str):
+@click.option("--recipient-email", type=str, required=True)
+@click.option("--sender-email", type=str, required=True)
+def watch(
+        load_page_wait_seconds: int,
+        remote_chrome_driver_url: str,
+        embassy_url: str,
+        recipient_email: str,
+        sender_email: str):
     logger.info(
         f"Initializing webdrive using url: {remote_chrome_driver_url!r}")
     driver = webdriver.Remote(remote_chrome_driver_url,
@@ -29,7 +38,9 @@ def watch(load_page_wait_seconds: int, remote_chrome_driver_url: str, embassy_ur
     bsoup = BeautifulSoup(page_html, "html.parser")
     if target_string not in bsoup.text:
         logger.info("Appointments available. Sending mail")
-        pass
+        send_email(sender_email, recipient_email,
+                   message="Automation has detected appointments available. Book now!",
+                   subject="UA Appointment Checker")
     else:
         # print that no appointment available
         logger.info("No appointments available.")
@@ -37,4 +48,5 @@ def watch(load_page_wait_seconds: int, remote_chrome_driver_url: str, embassy_ur
 
 
 def main():
+    load_dotenv()
     watch()
