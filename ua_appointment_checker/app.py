@@ -10,6 +10,7 @@ from loguru import logger
 from ua_appointment_checker.registry import manager
 
 
+@manager.register("help", description="Shows help instructions.")
 @manager.register("start", description="")
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     commands_available = "\n".join(
@@ -47,6 +48,66 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=update.effective_chat.id,
         text=message)
 
+chat_ids = set()
+
+
+@manager.register(
+    "subscribe",
+    description="Subscribe for automatic updates. The bot will only notify you when appointments are available."
+)
+async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_message.chat_id
+    message = "You've been successfully registered."
+    # TODO: Currently, this is done in-memory, we should use a
+    # persisten db instead.
+    chat_ids.add(chat_id)
+    logger.info(
+        f"Successfully subscribed chat_id {chat_id}. There are now {len(chat_ids)} chats registered.")
+    await update.effective_message.reply_text(message)
+
+
+@manager.register(
+    "unsubscribe",
+    description="Unsubscribes for automatic updates."
+)
+async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_message.chat_id
+    message = "You've been successfully unsubscribed."
+    # TODO: Deal with db instead of with the in-memory set
+    # of chat_ids to notify.
+    chat_ids.remove(chat_id)
+    logger.info(
+        f"Successfully unsubscribed chat_id {chat_id}. There are now {len(chat_ids)} chats registered.")
+    await update.effective_message.reply_text(message)
+
+
+async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
+    # TODO: Generating the host/port and url is repeated,
+    # unify into one single entry point/function
+    if len(chat_ids) == 0:
+        logger.info("No chats to notify, we will not run polling.")
+        return
+    host = os.environ.get(cons.REMOTE_CHROME_HOST_ENV,
+                          cons.DEFAULT_REMOTE_CHROME_HOST)
+    port = os.environ.get(cons.REMOTE_CHROME_PORT_ENV,
+                          cons.DEFAULT_REMOTE_CHROME_PORT)
+    remote_chrome_url = cons.REMOTE_CHROME_URL_FORMAT.format(
+        host=host,
+        port=port
+    )
+    driver = checker.get_default_remote_webdriver(remote_chrome_url)
+    available = checker.are_appointments_available(
+        web_driver=driver,
+        target_url=cons.DEFAULT_EMBASSY_URL
+    )
+    if available:
+        message = f"Appointments available. Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
+        logger.info(f"Notifying to {len(chat_ids)} users.")
+        for chat_id in chat_ids:
+            await context.bot.send_message(chat_id, text=message)
+    else:
+        logger.info("No appointments available found. No notifications sent.")
+
 
 def main():
     load_dotenv()
@@ -58,4 +119,10 @@ def main():
     for _, entry in manager.registry.items():
         handler = CommandHandler(entry.endpoint, entry.func)
         application.add_handler(handler)
-    application.run_polling()
+    polling_interval_seconds = 15*60  # every 15 minutes
+    application.job_queue.run_repeating(
+        check_and_notify,
+        interval=polling_interval_seconds
+    )
+    logger.info("Successfully started bot.")
+    application.run_polling(allowed_updates=Update.ALL_TYPES)

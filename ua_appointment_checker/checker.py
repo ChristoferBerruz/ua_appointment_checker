@@ -2,6 +2,8 @@ import time
 from loguru import logger
 from selenium import webdriver
 from bs4 import BeautifulSoup
+from typing import Callable
+import functools
 
 
 def are_appointments_available(
@@ -34,6 +36,22 @@ def are_appointments_available(
     return target_string not in bsoup.text
 
 
+def args_memo(func: Callable):
+    memory = {}
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if args not in memory:
+            logger.debug(
+                f"{args} not found in memory. Computing function: {func.__name__!r}")
+            res = func(*args, **kwargs)
+            memory[args] = res
+        logger.debug(f"Returning cached value for {args}")
+        return memory[args]
+    return wrapper
+
+
+@args_memo
 def get_default_remote_webdriver(remote_url: str) -> webdriver.Remote:
     """Returns a Google Chrome Remote Web Driver
 
