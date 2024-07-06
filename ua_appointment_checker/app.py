@@ -26,8 +26,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @manager.register(endpoint="check", description="Checks, right now, whether there are appointments available")
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    driver = checker.get_default_remote_webdriver(
-        cons.DEFAULT_REMOTE_CHROME_URL)
+    host = os.environ.get(cons.REMOTE_CHROME_HOST_ENV,
+                          cons.DEFAULT_REMOTE_CHROME_HOST)
+    port = os.environ.get(cons.REMOTE_CHROME_PORT_ENV,
+                          cons.DEFAULT_REMOTE_CHROME_PORT)
+    remote_chrome_url = cons.REMOTE_CHROME_URL_FORMAT.format(
+        host=host,
+        port=port
+    )
+    driver = checker.get_default_remote_webdriver(remote_chrome_url)
     available = checker.are_appointments_available(
         web_driver=driver,
         target_url=cons.DEFAULT_EMBASSY_URL
