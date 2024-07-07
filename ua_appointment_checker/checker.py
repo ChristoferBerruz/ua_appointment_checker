@@ -4,6 +4,7 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 from typing import Callable
 import functools
+import contextlib
 
 
 def are_appointments_available(
@@ -51,7 +52,7 @@ def args_memo(func: Callable):
     return wrapper
 
 
-@args_memo
+@contextlib.contextmanager
 def get_default_remote_webdriver(remote_url: str) -> webdriver.Remote:
     """Returns a Google Chrome Remote Web Driver
 
@@ -61,4 +62,13 @@ def get_default_remote_webdriver(remote_url: str) -> webdriver.Remote:
     Returns:
         webdriver.Remote: the webdriver
     """
-    return webdriver.Remote(remote_url, options=webdriver.ChromeOptions())
+    # TODO: Currently, the webdriver can only handle one connection at a time
+    # That's okay for a low-threaded, low requests environment. However,
+    # we need a way to "await" for the webdriver to be done
+    # if it is running a command.
+    try:
+        driver = webdriver.Remote(
+            remote_url, options=webdriver.ChromeOptions())
+        yield driver
+    finally:
+        driver.quit()

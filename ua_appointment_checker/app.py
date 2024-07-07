@@ -35,11 +35,11 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         host=host,
         port=port
     )
-    driver = checker.get_default_remote_webdriver(remote_chrome_url)
-    available = checker.are_appointments_available(
-        web_driver=driver,
-        target_url=cons.DEFAULT_EMBASSY_URL
-    )
+    with checker.get_default_remote_webdriver(remote_chrome_url) as driver:
+        available = checker.are_appointments_available(
+            web_driver=driver,
+            target_url=cons.DEFAULT_EMBASSY_URL
+        )
     if available:
         message = f"Appointments available. Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
     else:
@@ -95,11 +95,11 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
         host=host,
         port=port
     )
-    driver = checker.get_default_remote_webdriver(remote_chrome_url)
-    available = checker.are_appointments_available(
-        web_driver=driver,
-        target_url=cons.DEFAULT_EMBASSY_URL
-    )
+    with checker.get_default_remote_webdriver(remote_chrome_url) as driver:
+        available = checker.are_appointments_available(
+            web_driver=driver,
+            target_url=cons.DEFAULT_EMBASSY_URL
+        )
     if available:
         message = f"Appointments available. Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
         logger.info(f"Notifying to {len(chat_ids)} users.")
