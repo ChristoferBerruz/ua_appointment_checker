@@ -13,10 +13,12 @@ COPY pyproject.toml poetry.lock ./
 
 RUN touch README.md
 
+# Install the project dependencies
 RUN poetry install --without dev --no-root && rm -rf $POETRY_CACHE_DIR
 
 COPY ua_appointment_checker ./ua_appointment_checker
 
+# Install the project itself (in case of poetry scripts)
 RUN poetry install --without dev
 
 ENTRYPOINT ["poetry", "run", "python", "-m", "ua_appointment_checker"]
