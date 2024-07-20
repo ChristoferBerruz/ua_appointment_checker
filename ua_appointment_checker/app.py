@@ -40,8 +40,21 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
             web_driver=driver,
             target_url=cons.DEFAULT_EMBASSY_URL
         )
+        if available:
+            appointments = checker.get_appointments_available(
+                driver=driver,
+                target_url=cons.DEFAULT_EMBASSY_URL
+            )
     if available:
-        message = f"Appointments available. Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
+        appointments_msg = "\n".join(
+            f"* {appointment.date}: {appointment.number_of_appointments} appointments."
+            for appointment in appointments
+        )
+        message = (
+            "Appointments available.\n"
+            f"{appointments_msg}\n"
+            f"Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
+        )
     else:
         message = "No appointments available"
     await context.bot.send_message(
@@ -100,9 +113,23 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
             web_driver=driver,
             target_url=cons.DEFAULT_EMBASSY_URL
         )
+        if available:
+            appointments = checker.get_appointments_available(
+                driver=driver,
+                target_url=cons.DEFAULT_EMBASSY_URL
+            )
     if available:
-        message = f"Appointments available. Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
-        logger.info(f"Notifying to {len(chat_ids)} users.")
+        appointments_msg = "\n".join(
+            f"* {appointment.date}: {appointment.number_of_appointments} appointments."
+            for appointment in appointments
+        )
+        message = (
+            "Appointments available.\n"
+            f"{appointments_msg}\n"
+            f"Please visit {cons.DEFAULT_EMBASSY_URL} to make an appointment"
+        )
+        logger.info(
+            f"Appointments available. Notifying to {len(chat_ids)} users.")
         for chat_id in chat_ids:
             await context.bot.send_message(chat_id, text=message)
     else:
