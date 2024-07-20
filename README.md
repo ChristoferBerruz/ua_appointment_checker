@@ -31,13 +31,22 @@ Telegram bots use bot tokens in order for Telegram to dispatch the events to the
 
 We have our Telegram bot, so ask Christofer for the token.
 
-Then, in order to run, simply do
+Then, in order to run, simply do.
 
 ```code
 export TELEGRAM_BOT_TOKEN=<my_token> && docker compose up --build
 ```
 
-This will run the bot in the current shell, attached. If you want to run it in detached mode, use the `-d` flag to the docker compose command:
+Another way of doing this is to simply create a .env file. Then, just
+set the environment variables in the file. When you run
+
+```code
+docker compose up --build
+```
+
+Docker will inject the environment variables.
+
+By using docker compose, the bot in the current shell, attached. If you want to run it in detached mode, use the `-d` flag to the docker compose command:
 
 ```code
 docker compose up -d --build
