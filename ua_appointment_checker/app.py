@@ -8,6 +8,7 @@ from ua_appointment_checker import checker
 from typing import Tuple, Callable
 from loguru import logger
 from ua_appointment_checker.registry import manager
+from ua_appointment_checker.environment import app_environment
 
 
 @manager.register("help", description="Shows help instructions.")
@@ -27,10 +28,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @manager.register(endpoint="check", description="Checks, right now, whether there are appointments available")
 async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    host = os.environ.get(cons.REMOTE_CHROME_HOST_ENV,
-                          cons.DEFAULT_REMOTE_CHROME_HOST)
-    port = os.environ.get(cons.REMOTE_CHROME_PORT_ENV,
-                          cons.DEFAULT_REMOTE_CHROME_PORT)
+    host = app_environment.remote_chrome_hostname
+    port = app_environment.remote_chrome_port
     remote_chrome_url = cons.REMOTE_CHROME_URL_FORMAT.format(
         host=host,
         port=port
@@ -100,10 +99,8 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
     if len(chat_ids) == 0:
         logger.info("No chats to notify, we will not run polling.")
         return
-    host = os.environ.get(cons.REMOTE_CHROME_HOST_ENV,
-                          cons.DEFAULT_REMOTE_CHROME_HOST)
-    port = os.environ.get(cons.REMOTE_CHROME_PORT_ENV,
-                          cons.DEFAULT_REMOTE_CHROME_PORT)
+    host = app_environment.remote_chrome_hostname
+    port = app_environment.remote_chrome_port
     remote_chrome_url = cons.REMOTE_CHROME_URL_FORMAT.format(
         host=host,
         port=port
@@ -138,7 +135,7 @@ async def check_and_notify(context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     load_dotenv()
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    token = app_environment.bot_token
     if not token:
         raise ValueError(
             "No bot token found. Please set the right env variable")
